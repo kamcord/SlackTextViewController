@@ -160,6 +160,7 @@ NSString * const SLKKeyboardDidHideNotification =   @"SLKKeyboardDidHideNotifica
     [self.view addSubview:self.autoCompletionView];
     [self.view addSubview:self.typingIndicatorView];
     [self.view addSubview:self.textInputbar];
+    self.textInputbar.clipsToBounds = YES;
 }
 
 - (void)viewDidLoad
