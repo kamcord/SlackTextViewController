@@ -373,7 +373,7 @@ NSString * const SLKKeyboardDidHideNotification =   @"SLKKeyboardDidHideNotifica
 
 - (CGFloat)minimumInputbarHeight
 {
-    return self.textInputbar.intrinsicContentSize.height;
+    return self.shouldHideTextInputBar ? 0.f : self.textInputbar.intrinsicContentSize.height;
 }
 
 - (CGFloat)inputBarHeightForLines:(NSUInteger)numberOfLines
