@@ -466,7 +466,7 @@ NSString * const SLKKeyboardDidHideNotification =   @"SLKKeyboardDidHideNotifica
     height -= self.autoCompletionViewHC.constant;
     height -= self.typingIndicatorViewHC.constant;
     if (self.shouldHideTextInputBar) {
-      height += self.textInputbar.height;
+      height += self.textInputbar.frame.size.height;
     }
     
     if (height < 0) return 0;
