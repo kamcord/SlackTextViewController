@@ -78,6 +78,9 @@ NS_CLASS_AVAILABLE_IOS(7_0) @interface SLKTextViewController : UIViewController 
 /** YES if the scrollView should scroll to bottom when the keyboard is shown. Default is NO.*/
 @property (nonatomic, assign) BOOL shouldScrollToBottomAfterKeyboardShows;
 
+/** YES if the text input bar should be hidden. */
+@property (nonatomic, assign) BOOL shouldHideTextInputBar;
+
 /**
  YES if the main table view is inverted. Default is YES.
  This allows the table view to start from the bottom like any typical messaging interface.
