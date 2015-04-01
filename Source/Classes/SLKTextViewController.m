@@ -287,7 +287,7 @@ NSString * const SLKKeyboardDidHideNotification =   @"SLKKeyboardDidHideNotifica
         self.verticalPanGesture.delegate = self;
         [_textInputbar.textView addGestureRecognizer:self.verticalPanGesture];
         if (self.shouldHideTextInputBar) {
-            [_textInputbar.textView removeFromSuperview];
+            _textInputbar.textView.hidden = YES;
         }
     }
     return _textInputbar;
