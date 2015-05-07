@@ -1702,9 +1702,6 @@ NSString * const SLKKeyboardDidHideNotification =   @"SLKKeyboardDidHideNotifica
 
 - (void)setupViewConstraints
 {
-  if (!self.scrollViewProxy || !self.autoCompletionView || !self.typingIndicatorView || !self.textInputbar)
-    return;
-
   NSDictionary *views = @{@"scrollView": self.scrollViewProxy,
                           @"autoCompletionView": self.autoCompletionView,
                           @"typingIndicatorView": self.typingIndicatorView,
