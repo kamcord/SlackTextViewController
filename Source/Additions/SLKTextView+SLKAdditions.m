@@ -18,6 +18,16 @@
 
 @implementation SLKTextView (SLKAdditions)
 
+- (void)slk_clearText:(BOOL)clearUndo
+{
+    // Important to call self implementation, as SLKTextView overrides setText: to add additional features.
+    [self setText:nil];
+    
+    if (self.undoManagerEnabled && clearUndo) {
+        [self.undoManager removeAllActions];
+    }
+}
+
 - (void)slk_scrollToCaretPositonAnimated:(BOOL)animated
 {
     if (animated) {
@@ -72,7 +82,7 @@
     }
     
     // Registers for undo management
-    [self prepareForUndo:@"Text appending"];
+    [self slk_prepareForUndo:@"Text appending"];
     
     // Append the new string at the caret position
     if (range.length == 0)
@@ -107,8 +117,9 @@
     NSString *text = self.text;
     NSInteger location = range.location;
     
-    if (text.length == 0) {
-        *rangePointer = NSMakeRange(0.0, 0.0);
+    // Aborts in case minimum requieres are not fufilled
+    if (text.length == 0 || location < 0 || (range.location+range.length) > text.length) {
+        *rangePointer = NSMakeRange(0, 0);
         return nil;
     }
     
@@ -144,10 +155,16 @@
     return word;
 }
 
-- (void)prepareForUndo:(NSString *)description
+- (void)slk_prepareForUndo:(NSString *)description
 {
-    [[self.undoManager prepareWithInvocationTarget:self] setText:self.text];
-    [self.undoManager setActionName:description];
+    if (!self.undoManagerEnabled) {
+        return;
+    }
+    
+	SLKTextView *prepareInvocation = [self.undoManager prepareWithInvocationTarget:self];
+	[prepareInvocation setText:self.text];
+	[self.undoManager setActionName:description];
+	
 }
 
 @end

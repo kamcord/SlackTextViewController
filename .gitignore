@@ -15,3 +15,7 @@ profile
 DerivedData
 .idea/
 *.hmap
+.gutter.json
+
+Tests/Pods
+Tests/Podfile.lock

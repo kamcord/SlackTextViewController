@@ -1,4 +1,4 @@
-@version = "1.3.2"
+@version = "1.5.1"
 
 Pod::Spec.new do |s|
   s.name         		= "SlackTextViewController"
@@ -15,9 +15,5 @@ Pod::Spec.new do |s|
   s.requires_arc 		= true
 
   s.header_mappings_dir = 'Source'
-  s.source_files 		= 'Classes', 'Source/Classes/*.{h,m}'
-
-  s.subspec 'Additions' do |add|
-    add.source_files     = 'Source/Additions/*.{h,m}'
-  end
+  s.source_files 		= 'Source/**/*.{h,m}'
 end

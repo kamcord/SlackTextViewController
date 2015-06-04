@@ -16,15 +16,15 @@
 
 #import <UIKit/UIKit.h>
 
-extern NSString * const SLKTextViewTextWillChangeNotification;
-extern NSString * const SLKTextViewContentSizeDidChangeNotification;
-extern NSString * const SLKTextViewDidPasteImageNotification DEPRECATED_ATTRIBUTE;
-extern NSString * const SLKTextViewDidPasteItemNotification;
-extern NSString * const SLKTextViewDidShakeNotification;
+UIKIT_EXTERN NSString * const SLKTextViewTextWillChangeNotification;
+UIKIT_EXTERN NSString * const SLKTextViewContentSizeDidChangeNotification;
+UIKIT_EXTERN NSString * const SLKTextViewSelectedRangeDidChangeNotification;
+UIKIT_EXTERN NSString * const SLKTextViewDidPasteItemNotification;
+UIKIT_EXTERN NSString * const SLKTextViewDidShakeNotification;
 
-extern NSString * const SLKTextViewPastedItemContentType;
-extern NSString * const SLKTextViewPastedItemMediaType;
-extern NSString * const SLKTextViewPastedItemData;
+UIKIT_EXTERN NSString * const SLKTextViewPastedItemContentType;
+UIKIT_EXTERN NSString * const SLKTextViewPastedItemMediaType;
+UIKIT_EXTERN NSString * const SLKTextViewPastedItemData;
 
 typedef NS_OPTIONS(NSUInteger, SLKPastableMediaType) {
     SLKPastableMediaTypeNone        = 0,
@@ -42,10 +42,10 @@ typedef NS_OPTIONS(NSUInteger, SLKPastableMediaType) {
 /** @name A custom text input view. */
 @interface SLKTextView : UITextView
 
-/** The placeholder text string. */
+/** The placeholder text string. Default is nil. */
 @property (nonatomic, copy) NSString *placeholder;
 
-/** The placeholder color. */
+/** The placeholder color. Default is lightGrayColor. */
 @property (nonatomic, copy) UIColor *placeholderColor;
 
 /** The maximum number of lines before enabling scrolling. Default is 0 wich means limitless. */
@@ -69,6 +69,9 @@ typedef NS_OPTIONS(NSUInteger, SLKPastableMediaType) {
 /** YES if autocorrection and spell checking are enabled. On iOS8, this property also controls the predictive QuickType bar from being visible. Default is YES. */
 @property (nonatomic, getter=isTypingSuggestionEnabled) BOOL typingSuggestionEnabled;
 
+/** YES if the text view supports undoing, either using UIMenuController, or with ctrl+z when using an external keyboard. Default is YES. */
+@property (nonatomic, readwrite) BOOL undoManagerEnabled;
+
 /**
  Some text view properties don't update when it's already firstResponder (auto-correction, spelling-check, etc.)
  To be able to update the text view while still being first responder, requieres to switch quickly from -resignFirstResponder to -becomeFirstResponder.
@@ -78,5 +81,10 @@ typedef NS_OPTIONS(NSUInteger, SLKPastableMediaType) {
  */
 - (void)refreshFirstResponder;
 - (void)refreshInputViews;
+
+/**
+ Notifies the text view that the user pressed any arrow key. This is used to move the cursor up and down while having multiple lines.
+ */
+- (void)didPressAnyArrowKey:(id)sender;
 
 @end
