@@ -15,29 +15,34 @@
 //
 
 #import "SLKTypingIndicatorView.h"
+#import "UIView+SLKAdditions.h"
 #import "SLKUIConstants.h"
-
-NSString * const SLKTypingIndicatorViewWillShowNotification =   @"SLKTypingIndicatorViewWillShowNotification";
-NSString * const SLKTypingIndicatorViewWillHideNotification =   @"SLKTypingIndicatorViewWillHideNotification";
 
 #define SLKTypingIndicatorViewIdentifier    [NSString stringWithFormat:@"%@.%@", SLKTextViewControllerDomain, NSStringFromClass([self class])]
 
 @interface SLKTypingIndicatorView ()
 
+// The text label used to display the typing indicator content.
+@property (nonatomic, strong) UILabel *textLabel;
+
 @property (nonatomic, strong) NSMutableArray *usernames;
 @property (nonatomic, strong) NSMutableArray *timers;
-@property (nonatomic, strong) UILabel *indicatorLabel;
+
+// Auto-Layout margin constraints used for updating their constants
+@property (nonatomic, strong) NSLayoutConstraint *leftContraint;
+@property (nonatomic, strong) NSLayoutConstraint *rightContraint;
 
 @end
 
 @implementation SLKTypingIndicatorView
+@synthesize visible = _visible;
 
 #pragma mark - Initializer
 
 - (id)init
 {
     if (self = [super init]) {
-        [self commonInit];
+        [self slk_commonInit];
     }
     return self;
 }
@@ -45,120 +50,160 @@ NSString * const SLKTypingIndicatorViewWillHideNotification =   @"SLKTypingIndic
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     if (self = [super initWithCoder:coder]) {
-        [self commonInit];
+        [self slk_commonInit];
     }
     return self;
 }
 
-- (void)commonInit
+- (void)slk_commonInit
 {
-    self.height = 30.0;
+    self.backgroundColor = [UIColor whiteColor];
+    
     self.interval = 6.0;
-    self.canResignByTouch = YES;
+    self.canResignByTouch = NO;
     self.usernames = [NSMutableArray new];
     self.timers = [NSMutableArray new];
     
-    self.backgroundColor = [UIColor whiteColor];
+    self.textColor = [UIColor grayColor];
+    self.textFont = [UIFont systemFontOfSize:12.0];
+    self.highlightFont = [UIFont boldSystemFontOfSize:12.0];
+    self.contentInset = UIEdgeInsetsMake(10.0, 40.0, 10.0, 10.0);
     
-    [self addSubview:self.indicatorLabel];
+    [self addSubview:self.textLabel];
     
-    [self setupConstraints];
+    [self slk_setupConstraints];
 }
 
 
-#pragma mark - UIView Overrides
+#pragma mark - SLKTypingIndicatorProtocol
 
-- (CGSize)intrinsicContentSize
+- (void)setVisible:(BOOL)visible
 {
-    return CGSizeMake(UIViewNoIntrinsicMetric, self.height);
+    // Skip when updating the same value, specially to avoid inovking KVO unnecessary
+    if (self.isVisible == visible) {
+        return;
+    }
+    
+    // Required implementation for key-value observer compliance
+    [self willChangeValueForKey:NSStringFromSelector(@selector(isVisible))];
+    
+    _visible = visible;
+    
+    if (!visible) {
+        [self slk_invalidateTimers];
+    }
+    
+    // Required implementation for key-value observer compliance
+    [self didChangeValueForKey:NSStringFromSelector(@selector(isVisible))];
 }
 
-+ (BOOL)requiresConstraintBasedLayout
+- (void)dismissIndicator
 {
-    return YES;
+    if (self.isVisible) {
+        self.visible = NO;
+    }
 }
 
 
 #pragma mark - Getters
 
-- (UILabel *)indicatorLabel
+- (UILabel *)textLabel
 {
-    if (!_indicatorLabel)
-    {
-        _indicatorLabel = [UILabel new];
-        _indicatorLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _indicatorLabel.font = [UIFont systemFontOfSize:12.0];
-        _indicatorLabel.textColor =[UIColor grayColor];
-        _indicatorLabel.backgroundColor = [UIColor clearColor];
-        _indicatorLabel.userInteractionEnabled = NO;
+    if (!_textLabel) {
+        _textLabel = [UILabel new];
+        _textLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        _textLabel.backgroundColor = [UIColor clearColor];
+        _textLabel.contentMode = UIViewContentModeTopLeft;
+        _textLabel.userInteractionEnabled = NO;
     }
-    return _indicatorLabel;
+    return _textLabel;
 }
 
 - (NSAttributedString *)attributedString
 {
-    if (_usernames.count == 0) {
+    if (self.usernames.count == 0) {
         return nil;
     }
     
     NSString *text = nil;
+    NSString *firstObject = [self.usernames firstObject];
+    NSString *lastObject = [self.usernames lastObject];
     
-    if (_usernames.count == 1) {
-        text = [NSString stringWithFormat:NSLocalizedString(@"%@ is typing", nil), [_usernames firstObject]];
+    if (self.usernames.count == 1) {
+        text = [NSString stringWithFormat:NSLocalizedString(@"%@ is typing", nil), firstObject];
     }
-    else if (_usernames.count == 2) {
-        text = [NSString stringWithFormat:NSLocalizedString(@"%@ & %@ are typing", nil), [_usernames firstObject], [_usernames lastObject]];
+    else if (self.usernames.count == 2) {
+        text = [NSString stringWithFormat:NSLocalizedString(@"%@ & %@ are typing", nil), firstObject, lastObject];
     }
-    else if (_usernames.count > 2) {
+    else if (self.usernames.count > 2) {
         text = NSLocalizedString(@"Several people are typing", nil);
     }
-    
-    NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:text];
     
     NSMutableParagraphStyle *style  = [[NSMutableParagraphStyle alloc] init];
     style.alignment = NSTextAlignmentLeft;
     style.lineBreakMode = NSLineBreakByTruncatingTail;
     style.minimumLineHeight = 10.0;
     
-    [attributedString addAttribute:NSParagraphStyleAttributeName value:style range:NSMakeRange(0.0, text.length)];
+    NSDictionary *attributes = @{NSFontAttributeName: self.textFont,
+                                 NSForegroundColorAttributeName: self.textColor,
+                                 NSParagraphStyleAttributeName: style,
+                                 };
     
-    if (_usernames.count <= 2) {
-        [attributedString addAttribute:NSFontAttributeName value:[UIFont boldSystemFontOfSize:12.0] range:[text rangeOfString:[_usernames firstObject]]];
-        [attributedString addAttribute:NSFontAttributeName value:[UIFont boldSystemFontOfSize:12.0] range:[text rangeOfString:[_usernames lastObject]]];
+    NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:text attributes:attributes];
+    
+    if (self.usernames.count <= 2) {
+        [attributedString addAttribute:NSFontAttributeName value:self.highlightFont range:[text rangeOfString:firstObject]];
+        [attributedString addAttribute:NSFontAttributeName value:self.highlightFont range:[text rangeOfString:lastObject]];
     }
     
     return attributedString;
 }
 
-- (NSTimer *)timerWithIdentifier:(NSString *)identifier
+- (CGSize)intrinsicContentSize
 {
-    for (NSTimer *timer in _timers) {
-        if ([identifier isEqualToString:[timer.userInfo objectForKey:SLKTypingIndicatorViewIdentifier]]) {
-            return timer;
-        }
-    }
-    
-    return nil;
+    return CGSizeMake(UIViewNoIntrinsicMetric, [self height]);
+}
+
+- (CGFloat)height
+{
+    CGFloat height = self.textFont.lineHeight;
+    height += self.contentInset.top;
+    height += self.contentInset.bottom;
+    return height;
 }
 
 
 #pragma mark - Setters
 
-- (void)setVisible:(BOOL)visible
+- (void)setContentInset:(UIEdgeInsets)insets
 {
-    if (visible == _visible) {
+    if (UIEdgeInsetsEqualToEdgeInsets(self.contentInset, insets)) {
         return;
     }
     
-    NSString *notificationName = visible ? SLKTypingIndicatorViewWillShowNotification : SLKTypingIndicatorViewWillHideNotification;
-    [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:self];
-    
-    _visible = visible;
-    
-    if (!visible) {
-        [self clean];
+    if (UIEdgeInsetsEqualToEdgeInsets(self.contentInset, UIEdgeInsetsZero)) {
+        _contentInset = insets;
+        return;
     }
+    
+    _contentInset = insets;
+    
+    [self slk_updateConstraintConstants];
 }
+
+- (void)setHidden:(BOOL)hidden
+{
+    if (self.isHidden == hidden) {
+        return;
+    }
+    
+    if (hidden) {
+        [self slk_prepareForReuse];
+    }
+    
+    [super setHidden:hidden];
+}
+
 
 #pragma mark - Public Methods
 
@@ -168,130 +213,131 @@ NSString * const SLKTypingIndicatorViewWillHideNotification =   @"SLKTypingIndic
         return;
     }
     
-    BOOL isShowing = [_usernames containsObject:username];
+    BOOL isShowing = [self.usernames containsObject:username];
     
     if (_interval > 0.0) {
         
         if (isShowing) {
-            NSTimer *timer = [self timerWithIdentifier:username];
-            [self invalidateTimer:timer];
+            NSTimer *timer = [self slk_timerWithIdentifier:username];
+            [self slk_invalidateTimer:timer];
         }
         
-        NSTimer *timer = [NSTimer timerWithTimeInterval:_interval target:self selector:@selector(shouldRemoveUsername:) userInfo:@{SLKTypingIndicatorViewIdentifier: username} repeats:NO];
+        NSTimer *timer = [NSTimer timerWithTimeInterval:_interval target:self selector:@selector(slk_shouldRemoveUsername:) userInfo:@{SLKTypingIndicatorViewIdentifier: username} repeats:NO];
         [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
-        [_timers addObject:timer];
+        [self.timers addObject:timer];
     }
     
     if (isShowing) {
         return;
     }
     
-    [_usernames addObject:username];
+    [self.usernames addObject:username];
     
-    NSAttributedString *text = [self attributedString];
+    NSAttributedString *attributedString = [self attributedString];
     
-    _indicatorLabel.attributedText = text;
+    self.textLabel.attributedText = attributedString;
     
-    if (!self.isVisible) {
-        [self setVisible:YES];
-    }
+    self.visible = YES;
 }
 
 - (void)removeUsername:(NSString *)username
 {
-    if (!username || ![_usernames containsObject:username]) {
+    if (!username || ![self.usernames containsObject:username]) {
         return;
     }
     
-    [_usernames removeObject:username];
+    [self.usernames removeObject:username];
     
-    if (_usernames.count > 0) {
-        _indicatorLabel.attributedText = [self attributedString];
+    if (self.usernames.count > 0) {
+        self.textLabel.attributedText = [self attributedString];
     }
-    else if (self.isVisible) {
-        [self setVisible:NO];
-    }
-}
-
-- (void)dismissIndicator
-{
-    if (self.isVisible) {
-        [self setVisible:NO];
+    else {
+        self.visible = NO;
     }
 }
 
 
-#pragma mark - Dimissing Methods
+#pragma mark - Private Methods
 
-- (void)shouldRemoveUsername:(NSTimer *)timer
+- (void)slk_shouldRemoveUsername:(NSTimer *)timer
 {
     NSString *identifier = [timer.userInfo objectForKey:SLKTypingIndicatorViewIdentifier];
     
     [self removeUsername:identifier];
-    [self invalidateTimer:timer];
+    [self slk_invalidateTimer:timer];
 }
 
+- (NSTimer *)slk_timerWithIdentifier:(NSString *)identifier
+{
+    for (NSTimer *timer in self.timers) {
+        if ([identifier isEqualToString:[timer.userInfo objectForKey:SLKTypingIndicatorViewIdentifier]]) {
+            return timer;
+        }
+    }
+    return nil;
+}
 
-#pragma mark - Cleaning Methods
-
-- (void)invalidateTimer:(NSTimer *)timer
+- (void)slk_invalidateTimer:(NSTimer *)timer
 {
     if (timer) {
         [timer invalidate];
-        [_timers removeObject:timer];
+        [self.timers removeObject:timer];
         timer = nil;
     }
 }
 
-- (void)invalidateTimers
+- (void)slk_invalidateTimers
 {
-    for (NSTimer *timer in _timers) {
+    for (NSTimer *timer in self.timers) {
         [timer invalidate];
     }
     
-    [_timers removeAllObjects];
+    [self.timers removeAllObjects];
 }
 
-- (void)clean
+- (void)slk_prepareForReuse
 {
-    [self invalidateTimers];
+    [self slk_invalidateTimers];
     
-    _indicatorLabel.text = nil;
+    self.textLabel.text = nil;
     
-    [_usernames removeAllObjects];
+    [self.usernames removeAllObjects];
 }
 
-
-#pragma mark - View Auto-Layout
-
-- (void)setupConstraints
+- (void)slk_setupConstraints
 {
-    NSNumber *lineHeight = @(roundf(self.indicatorLabel.font.lineHeight));
-    NSNumber *padding = @(roundf((self.height-[lineHeight floatValue]) / 2.0));
+    NSDictionary *views = @{@"textLabel": self.textLabel};
     
-    NSDictionary *views = @{@"label": self.indicatorLabel};
-    NSDictionary *metrics = @{@"lineHeight": lineHeight, @"padding": padding};
+    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[textLabel]|" options:0 metrics:nil views:views]];
+    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(0)-[textLabel]-(0@750)-|" options:0 metrics:nil views:views]];
     
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-(>=padding)-[label(lineHeight)]-(<=padding)-|" options:0 metrics:metrics views:views]];
-    [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-(40)-[label]-(<=20)-|" options:0 metrics:metrics views:views]];
+    self.leftContraint = [[self slk_constraintsForAttribute:NSLayoutAttributeLeading] firstObject];
+    self.rightContraint = [[self slk_constraintsForAttribute:NSLayoutAttributeTrailing] firstObject];
     
-    [self layoutIfNeeded];
+    [self slk_updateConstraintConstants];
+}
+
+- (void)slk_updateConstraintConstants
+{
+    self.leftContraint.constant = self.contentInset.left;
+    self.rightContraint.constant = self.contentInset.right;
 }
 
 
 #pragma mark - Hit Testing
 
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    UIView *view = [super hitTest:point withEvent:event];
+    [super touchesBegan:touches withEvent:event];
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [super touchesEnded:touches withEvent:event];
     
-    if ([view isEqual:self]) {
-        if (self.isVisible && self.canResignByTouch) {
-            [self setVisible:NO];
-        }
-        return view;
+    if (self.canResignByTouch) {
+        [self dismissIndicator];
     }
-    return view;
 }
 
 
@@ -299,9 +345,9 @@ NSString * const SLKTypingIndicatorViewWillHideNotification =   @"SLKTypingIndic
 
 - (void)dealloc
 {
-    [self clean];
+    [self slk_prepareForReuse];
     
-    _indicatorLabel = nil;
+    _textLabel = nil;
     _usernames = nil;
     _timers = nil;
 }

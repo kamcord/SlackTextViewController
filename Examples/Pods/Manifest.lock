@@ -1,0 +1,17 @@
+PODS:
+  - LoremIpsum (1.0.0)
+  - SlackTextViewController (1.5.2)
+
+DEPENDENCIES:
+  - LoremIpsum (~> 1.0)
+  - SlackTextViewController (from `../SlackTextViewController.podspec`)
+
+EXTERNAL SOURCES:
+  SlackTextViewController:
+    :path: ../SlackTextViewController.podspec
+
+SPEC CHECKSUMS:
+  LoremIpsum: 9029c55d36501b2ee0b05cc9ecda11d3a0479160
+  SlackTextViewController: 2a3f79c474e41f50b22a8498c510a4da05e207de
+
+COCOAPODS: 0.35.0
