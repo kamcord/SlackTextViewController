@@ -15,92 +15,34 @@
 //
 
 #import "SLKInputAccessoryView.h"
+
 #import "SLKUIConstants.h"
 
-NSString * const SLKInputAccessoryViewKeyboardFrameDidChangeNotification = @"SLKInputAccessoryViewKeyboardFrameDidChangeNotification";
-
-@interface SLKInputAccessoryView ()
-@property (nonatomic, weak) UIView *observedSuperview;
-@end
-
 @implementation SLKInputAccessoryView
-
-#pragma mark - Getters
-
-NSString *SLKKeyboardHandlingKeyPath()
-{
-    // Listening for the superview's frame doesn't work on iOS8 and above, so we use its center
-    if (UI_IS_IOS8_AND_HIGHER) {
-        return NSStringFromSelector(@selector(center));
-    }
-    else {
-        return NSStringFromSelector(@selector(frame));
-    }
-}
-
 
 #pragma mark - Super Overrides
 
 - (void)willMoveToSuperview:(UIView *)newSuperview
 {
-    [self removeSuperviewObserver];
-    [self addSuperviewObserver:newSuperview];
-    
-    [super willMoveToSuperview:newSuperview];
-}
-
-
-#pragma mark - Superview handling
-
-- (void)addSuperviewObserver:(UIView *)superview
-{
-    if (_observedSuperview || !superview) {
-        return;
+    if (newSuperview) {
+        if (SLK_IS_IOS9_AND_HIGHER) {
+            
+            NSPredicate *windowPredicate = [NSPredicate predicateWithFormat:@"self isMemberOfClass: %@", NSClassFromString(@"UIRemoteKeyboardWindow")];
+            UIWindow *keyboardWindow = [[[UIApplication sharedApplication].windows filteredArrayUsingPredicate:windowPredicate] firstObject];
+            
+            for (UIView *subview in keyboardWindow.subviews) {
+                for (UIView *hostview in subview.subviews) {
+                    if ([hostview isMemberOfClass:NSClassFromString(@"UIInputSetHostView")]) {
+                        _keyboardViewProxy = hostview;
+                        break;
+                    }
+                }
+            }
+        }
+        else {
+            _keyboardViewProxy = newSuperview;
+        }
     }
-    
-    _observedSuperview = superview;
-    
-    [superview addObserver:self forKeyPath:SLKKeyboardHandlingKeyPath() options:0 context:NULL];
-}
-
-- (void)removeSuperviewObserver
-{
-    if (!_observedSuperview) {
-        return;
-    }
-    
-    [self.observedSuperview removeObserver:self forKeyPath:SLKKeyboardHandlingKeyPath()];
-    
-    _observedSuperview = nil;
-}
-
-
-#pragma mark - Events
-
-- (void)didChangeKeyboardFrame:(CGRect)frame
-{
-    NSDictionary *userInfo = @{UIKeyboardFrameEndUserInfoKey:[NSValue valueWithCGRect:frame]};
-    [[NSNotificationCenter defaultCenter] postNotificationName:SLKInputAccessoryViewKeyboardFrameDidChangeNotification object:nil userInfo:userInfo];
-}
-
-
-#pragma mark - KVO Listener
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
-{
-    if ([object isEqual:self.superview] && [keyPath isEqualToString:SLKKeyboardHandlingKeyPath()]) {
-        [self didChangeKeyboardFrame:self.superview.frame];
-    }
-    else {
-        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
-    }
-}
-
-#pragma mark - Lifeterm
-
-- (void)dealloc
-{
-    [self removeSuperviewObserver];
 }
 
 @end
